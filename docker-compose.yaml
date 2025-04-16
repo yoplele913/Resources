@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  mimir:
+    image: grafana/mimir:2.14.1
+    container_name: mimir
+    ports:
+      - "9090:9090"
+      - "9009:9009" # Remote Write Endpoint
+    volumes:
+      - /tmp/mimir:/tmp/mimir
+      - /home/ubuntu/config/mimir-config.yaml:/etc/mimir/mimir-config.yaml
+    command:
+      - -config.file=/etc/mimir/mimir-config.yaml
+    environment:
+      - MINIO_COMPRESSOR=none
+    restart: unless-stopped
