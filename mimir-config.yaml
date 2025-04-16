@@ -1,0 +1,61 @@
+server:
+  http_listen_port: 9009
+
+multitenancy_enabled: false
+
+common:
+  storage:
+    backend: s3
+    s3:
+      endpoint: s3.eu-central-1.amazonaws.com
+      region: eu-central-1
+
+blocks_storage:
+  backend: s3
+  bucket_store:
+    sync_dir: /tmp/mimir/tsdb-sync  # Temporary local cache directory
+  tsdb:
+    dir: /tmp/mimir/tsdb            # Temporary local directory for TSDB blocks
+  s3:
+    bucket_name: blocks.mimir-storage.brzlabs.cc
+
+compactor:
+  data_dir: /tmp/mimir/compactor    # Temporary directory for compacted blocks
+  sharding_ring:
+    kvstore:
+      store: inmemory
+
+distributor:
+  ring:
+    kvstore:
+      store: inmemory
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
+
+ruler_storage:
+  backend: s3
+  s3:
+    bucket_name: ruler.mimir-storage.brzlabs.cc
+
+alertmanager_storage:
+  backend: s3
+  s3:
+    bucket_name: alertmanager.mimir-storage.brzlabs.cc
+
+api:
+  prometheus_http_prefix: ''
+
+frontend:
+  split_queries_by_interval: 24h
+  cache_results: false  # 캐싱 비활성화
+  log_queries_longer_than: 1s
+
+querier: {}   # 단일 노드 환경에서는 추가 설정 불필요
