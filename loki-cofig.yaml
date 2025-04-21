@@ -1,4 +1,4 @@
- grpc_listen_port: 9096
+grpc_listen_port: 9096
 
 common:
   replication_factor: 1
@@ -16,7 +16,7 @@ query_range:
 
 schema_config:
   configs:
-    - from: 2020-10-24
+    - from: 2025-04-21
       store: boltdb-shipper
       object_store: aws
       schema: v13
@@ -31,16 +31,13 @@ storage_config:
     cache_ttl: 24h
   aws:
     s3: "s3://chunks.loki-storage.brzlabs.cc"
-    bucketnames: "chunks.loki-storage.brzlabs.cc"
     region: "eu-central-1"
-    endpoint: "https://s3.eu-central-1.amazonaws.com"
 
 ruler:
   storage:
     type: s3
     s3:
       bucketnames: ruler.loki-storage.brzlabs.cc
-      endpoint: https://s3.eu-central-1.amazonaws.com
       region: eu-central-1
 
 limits_config:
