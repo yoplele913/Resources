@@ -1,0 +1,83 @@
+---
+- name: Install Grafana Alloy and configure for Loki logging
+  hosts: localhost
+  become: yes
+
+  vars:
+    alloy_config_path: /etc/alloy/log-alloy.config
+
+  tasks:
+    - name: Install prerequisites (GPG)
+      apt:
+        name: gpg
+        state: present
+        update_cache: yes
+
+    - name: Create keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Grafana APT GPG key and repository
+      shell: |
+        wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+      args:
+        executable: /bin/bash
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Alloy
+      apt:
+        name: alloy
+        state: present
+
+    - name: Create Alloy config directory
+      file:
+        path: /etc/alloy
+        state: directory
+        mode: '0755'
+
+    - name: Deploy Loki Alloy config (log-alloy.config)
+      copy:
+        dest: "{{ alloy_config_path }}"
+        content: |
+          loki.source.file "var_logs" {
+            paths = ["/var/log/syslog", "/var/log/nginx/*.log"]
+            forward_to = [loki.write.default.receiver]
+          }
+
+          loki.write "default" {
+            endpoint {
+              url = "http://localhost:3100/loki/api/v1/push"
+            }
+          }
+
+    - name: Create systemd service for Alloy
+      copy:
+        dest: /etc/systemd/system/alloy.service
+        content: |
+          [Unit]
+          Description=Grafana Alloy
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/bin/alloy --config.file={{ alloy_config_path }}
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Alloy service
+      systemd:
+        name: alloy
+        enabled: yes
+        state: started
