@@ -1,0 +1,96 @@
+---
+- name: Install and run Loki only (with S3-ready config)
+  hosts: localhost
+  become: true
+
+  vars:
+    loki_dir: /home/ubuntu/loki
+    repo_dir: /home/ubuntu/resources
+    github_repo: "https://github.com/yoplele913/Resources.git"
+    loki_compose_src: "docker-compose.yaml"
+    loki_config_src: "loki-cofig.yaml"  # typo 감안하여 그대로 사용
+
+  tasks:
+    - name: Install required apt packages
+      apt:
+        name:
+          - git
+          - docker.io
+          - docker-compose
+          - unzip
+          - curl
+        update_cache: yes
+        state: present
+
+    - name: Install AWS CLI (v2)
+      shell: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip -o awscliv2.zip
+        sudo ./aws/install
+      args:
+        chdir: /tmp
+        creates: /usr/local/bin/aws
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Create Loki directory
+      file:
+        path: "{{ loki_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Clone GitHub repo with Loki configuration
+      git:
+        repo: "{{ github_repo }}"
+        dest: "{{ repo_dir }}"
+        force: yes
+
+    - name: Create minimal docker-compose.yaml for Loki
+      copy:
+        dest: "{{ loki_dir }}/docker-compose.yaml"
+        content: |
+          version: "3.3"
+
+          services:
+            loki:
+              container_name: loki
+              image: grafana/loki:latest
+              ports:
+                 - "3100:3100"
+              command: -config.file=/etc/loki/loki.yaml
+              volumes:
+               - ./loki.yaml:/etc/loki/loki.yaml
+
+    - name: Copy loki.yaml to Loki directory
+      copy:
+        src: "{{ repo_dir }}/{{ loki_config_src }}"
+        dest: "{{ loki_dir }}/loki.yaml"
+        remote_src: yes
+
+    - name: Run Docker Compose to start Loki
+      community.docker.docker_compose:
+        project_src: "{{ loki_dir }}"
+        files:
+          - docker-compose.yaml
+        state: present
+        restarted: true
+
+#    - name: Wait for Loki to become ready
+#      uri:
+#        url: http://localhost:3100/ready
+#        status_code: 200
+#        timeout: 10
+#      register: result
+#      retries: 5
+#      delay: 5
+#      until: result.status == 200
+
+    - name: Show completion message
+      debug:
+        msg: "Loki with S3-configured backend is now running!"
