@@ -3,7 +3,7 @@
   hosts: localhost
   become: true
   vars:
-    alloy_config_path: /etc/alloy/metric-config.yaml
+    alloy_config_path: /etc/alloy/metric-alloy.yaml
 
   tasks:
 
@@ -74,7 +74,7 @@
         After=network.target
 
         [Service]
-        ExecStart=/usr/bin/alloy --config.file=/etc/alloy/metric-config.yaml
+        ExecStart=/usr/bin/alloy --config.file=/etc/alloy/metric-alloy.yaml
         Restart=on-failure
 
         [Install]
