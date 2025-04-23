@@ -1,0 +1,91 @@
+---
+- name: Install and configure Grafana Alloy on Linux (single-shot)
+  hosts: localhost
+  become: true
+  vars:
+    alloy_config_path: /etc/alloy/metric-config.yaml
+
+  tasks:
+
+  - name: Ensure dependencies are installed
+    apt:
+      name: gpg
+      state: present
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Add Grafana GPG key
+    shell: |
+      mkdir -p /etc/apt/keyrings/
+      wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/grafana.gpg > /dev/null
+    args:
+      executable: /bin/bash
+
+  - name: Add Grafana repository
+    shell: |
+      echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list
+    args:
+      executable: /bin/bash
+
+  - name: Update apt repositories
+    apt:
+      update_cache: yes
+
+  - name: Install grafana-alloy
+    apt:
+      name: alloy
+      state: present
+
+  - name: Create Alloy config directory
+    file:
+      path: /etc/alloy
+      state: directory
+      mode: '0755'
+
+  - name: Deploy inline Alloy metric-config.yaml
+    copy:
+      dest: "{{ alloy_config_path }}"
+      mode: '0644'
+      content: |
+        logging {
+          level = "warn"
+        }
+
+        prometheus.exporter.self "self_metrics" {
+        }
+
+        prometheus.scrape "self_scrape" {
+          targets    = prometheus.exporter.self.self_metrics.targets
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+
+        prometheus.remote_write "mimir" {
+          endpoint {
+            url = "http://localhost:9009/api/v1/push"
+          }
+        }
+
+  - name: Create systemd unit for Alloy
+    copy:
+      dest: /etc/systemd/system/alloy.service
+      mode: '0644'
+      content: |
+        [Unit]
+        Description=Grafana Alloy Agent
+        After=network.target
+
+        [Service]
+        ExecStart=/usr/bin/alloy --config.file=/etc/alloy/metric-config.yaml
+        Restart=on-failure
+
+        [Install]
+        WantedBy=multi-user.target
+
+  - name: Reload systemd
+    systemd:
+      daemon_reload: yes
+
+  - name: Enable and start alloy service
+    systemd:
+      name: alloy
+      enabled: true
+      state: started
