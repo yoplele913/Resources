@@ -75,7 +75,8 @@
 
         [Service]
         ExecStart=/usr/bin/alloy --config.file=/etc/alloy/metric-alloy.yaml
-        Restart=on-failure
+        Restart=always
+        RestartSec=5
 
         [Install]
         WantedBy=multi-user.target
