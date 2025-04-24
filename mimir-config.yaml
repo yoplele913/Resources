@@ -44,6 +44,8 @@ ruler_storage:
   backend: s3
   s3:
     bucket_name: ruler.mimir-storage.brzlabs.cc
+    endpoint: s3.ap-northeast-2.amazonaws.com
+    region: ap-northeast-2
 
 alertmanager_storage:
   backend: s3
